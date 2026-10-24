@@ -114,6 +114,9 @@ public class GotrGoalsPlugin extends Plugin
 	private Notifier notifier;
 
 	@Inject
+	private LevelOverlay levelOverlay;
+
+	@Inject
 	private GoalOverlay goalOverlay;
 
 	@Inject
@@ -157,6 +160,7 @@ public class GotrGoalsPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		overlayManager.add(levelOverlay);
 		overlayManager.add(goalOverlay);
 		overlayManager.add(estimateOverlay);
 		resetGameTracking();
@@ -175,6 +179,7 @@ public class GotrGoalsPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		overlayManager.remove(levelOverlay);
 		overlayManager.remove(goalOverlay);
 		overlayManager.remove(estimateOverlay);
 	}

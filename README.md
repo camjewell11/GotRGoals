@@ -7,6 +7,9 @@ Sibling of [Mage Training Arena Goals](../MageTrainingArenaGoals), with the same
 
 ## How it works
 
+Everything is off by default. Turn on **Track level goal** for the level overlay, tick a reward for
+the pearl overlay, and turn on **Show estimates overlay** for the games-remaining overlay.
+
 - **Level Goal** (config): a target Runecraft level (default 99), or an exact **Target XP** for
   anything past 99. The overlay shows a progress bar from your current XP to the target.
 - **Reward Tracking** (config): checkboxes for every non-talisman Temple Supplies item (the Raiments of
@@ -20,9 +23,10 @@ Sibling of [Mage Training Arena Goals](../MageTrainingArenaGoals), with the same
   - **Pearls** are your inventory plus your bank as of the last time you opened it.
   - **Use manual totals** switches to typed-in values, e.g. to preview the overlay away from the
     minigame.
-- **Overlay**: the level bar, then the reward header (icon, name, % complete) and a pearl bar. The
-  translucent segment on the pearl bar is the pearls your banked points are *expected* to give
-  once you search them.
+- **Overlays** (150px wide by default, resizable): a **level** overlay with the XP bar, and a
+  **reward** overlay with the reward header (icon, name, % complete), a pearl bar and your banked
+  points. The translucent segment on the pearl bar is the pearls your banked points are *expected*
+  to give once you search them.
 - **Completion Estimates** (second overlay):
   - **Level**: XP remaining divided by your **rolling average XP per game**. That average is
     measured from `The rift becomes active!` to just after the game ends, so it includes both

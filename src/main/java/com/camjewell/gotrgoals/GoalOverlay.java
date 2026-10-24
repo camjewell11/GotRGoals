@@ -19,15 +19,24 @@ import net.runelite.client.ui.overlay.components.PanelComponent;
 import net.runelite.client.ui.overlay.components.SplitComponent;
 import net.runelite.client.util.QuantityFormatter;
 
+/**
+ * Pearl progress toward the ticked Temple Supplies rewards. The level goal has its own
+ * {@link LevelOverlay}, since the two goals are unrelated.
+ *
+ * Each bar's name and current/goal amounts sit on a text line above it, leaving only percent and
+ * remaining on the bar itself - a bar has no room to wrap, so packing three labels into it
+ * overprinted them at anything narrower than ~250px.
+ */
 class GoalOverlay extends OverlayPanel
 {
+	static final int PREFERRED_WIDTH = 150;
+
 	private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("0.0");
 	private static final int BORDER_SIZE = 3;
 	private static final int VERTICAL_GAP = 2;
 	private static final int ICON_GAP = 5;
 	private static final Rectangle TOP_PANEL_BORDER = new Rectangle(2, 0, 4, 4);
 	private static final Color PROGRESS_BAR_BACKGROUND_COLOR = new Color(61, 56, 49);
-	private static final Color RUNECRAFT_COLOR = Color.decode("#ffb74d");
 	private static final Color PEARL_COLOR = Color.decode("#4dd0e1");
 
 	private final GotrGoalsPlugin plugin;
@@ -49,7 +58,7 @@ class GoalOverlay extends OverlayPanel
 
 		setPosition(OverlayPosition.TOP_RIGHT);
 		setPriority(PRIORITY_MED);
-		panelComponent.setPreferredSize(new Dimension(250, 0));
+		panelComponent.setPreferredSize(new Dimension(PREFERRED_WIDTH, 0));
 		panelComponent.setBorder(new Rectangle(BORDER_SIZE, BORDER_SIZE, BORDER_SIZE, BORDER_SIZE));
 		panelComponent.setGap(new Point(0, VERTICAL_GAP));
 
@@ -62,8 +71,7 @@ class GoalOverlay extends OverlayPanel
 	{
 		Goal goal = plugin.getGoal();
 
-		boolean showRewards = !goal.getSelected().isEmpty();
-		if (!showRewards && !goal.isLevelGoalEnabled())
+		if (goal.getSelected().isEmpty())
 		{
 			return null;
 		}
@@ -74,45 +82,22 @@ class GoalOverlay extends OverlayPanel
 
 		graphics.setFont(FontManager.getRunescapeSmallFont());
 
-		if (goal.isLevelGoalEnabled())
-		{
-			addLevelBar(goal);
-		}
-
-		if (showRewards)
-		{
-			addRewardHeader(goal);
-			addPearlBar(goal);
-			addFooter();
-		}
+		addRewardHeader(goal);
+		addPearlSection(goal);
+		addFooter();
 
 		return super.render(graphics);
-	}
-
-	private void addLevelBar(Goal goal)
-	{
-		var progressBar = new OutlinedProgressBarComponent();
-		progressBar.setForegroundColor(RUNECRAFT_COLOR);
-		progressBar.setBackgroundColor(PROGRESS_BAR_BACKGROUND_COLOR);
-		progressBar.setPercentage(goal.getXpProgress());
-
-		String target = goal.isTargetXpOverride()
-			? QuantityFormatter.quantityToStackSize(goal.getTargetXp()) + " xp"
-			: "Lvl " + goal.getTargetLevel();
-		progressBar.setLeftLabel("RC " + goal.getCurrentLevel() + " > " + target);
-		progressBar.setRightLabel(QuantityFormatter.quantityToStackSize(goal.getCurrentXp())
-			+ "/" + QuantityFormatter.quantityToStackSize(goal.getTargetXp()));
-		progressBar.setCenterLabel(centerLabel(goal.getXpProgress(), goal.getXpRemaining()));
-
-		panelComponent.getChildren().add(progressBar);
 	}
 
 	private void addRewardHeader(Goal goal)
 	{
 		topPanel.getChildren().clear();
 
+		String name = goal.getSelected().size() == 1
+			? goal.getDisplayName()
+			: goal.getSelected().size() + " rewards";
 		var topLine = LineComponent.builder()
-			.left(goal.getDisplayName())
+			.left(name)
 			.leftFont(FontManager.getRunescapeFont())
 			.build();
 
@@ -142,15 +127,12 @@ class GoalOverlay extends OverlayPanel
 		panelComponent.getChildren().add(topPanel);
 	}
 
-	private void addPearlBar(Goal goal)
+	private void addPearlSection(Goal goal)
 	{
-		var progressBar = new OutlinedProgressBarComponent();
-		progressBar.setForegroundColor(PEARL_COLOR);
-		progressBar.setBackgroundColor(PROGRESS_BAR_BACKGROUND_COLOR);
-		progressBar.setPercentage(goal.getPearlProgress());
-		progressBar.setLeftLabel("Pearls");
-		progressBar.setRightLabel(QuantityFormatter.quantityToStackSize(goal.getPearlsOwned())
-			+ "/" + QuantityFormatter.quantityToStackSize(goal.getPearlGoal()));
+		panelComponent.getChildren().add(labelLine("Pearls", QuantityFormatter.quantityToStackSize(goal.getPearlsOwned())
+			+ "/" + QuantityFormatter.quantityToStackSize(goal.getPearlGoal())));
+
+		var progressBar = newBar(PEARL_COLOR, goal.getPearlProgress());
 
 		// Banked reward points are pearls-in-waiting: tint the part of the remaining bar that
 		// searching them would be expected to fill, the same way MTA Goals tints Alchemist gold
@@ -166,7 +148,7 @@ class GoalOverlay extends OverlayPanel
 			}
 		}
 
-		progressBar.setCenterLabel(centerLabel(goal.getPearlProgress(), goal.getPearlsRemaining()));
+		progressBar.setCenterLabel(centerLabel(config.showPercentages(), goal.getPearlProgress(), goal.getPearlsRemaining()));
 		panelComponent.getChildren().add(progressBar);
 	}
 
@@ -174,38 +156,60 @@ class GoalOverlay extends OverlayPanel
 	{
 		if (config.showPointsLine())
 		{
-			var pointsLine = LineComponent.builder()
-				.left("Reward points:")
-				.leftFont(FontManager.getRunescapeSmallFont());
 			if (plugin.isPointsKnown())
 			{
-				pointsLine.right(QuantityFormatter.formatNumber(plugin.getElementalPoints())
-					+ " / " + QuantityFormatter.formatNumber(plugin.getCatalyticPoints()))
-					.rightFont(FontManager.getRunescapeSmallFont());
+				addSmallLine("Points:", QuantityFormatter.formatNumber(plugin.getElementalPoints())
+					+ " / " + QuantityFormatter.formatNumber(plugin.getCatalyticPoints()), Color.WHITE);
 			}
 			else
 			{
-				pointsLine.right("Check the Rewards Guardian")
-					.rightColor(Color.GRAY)
-					.rightFont(FontManager.getRunescapeSmallFont());
+				addSmallLine("Points:", "Check guardian", Color.GRAY);
 			}
-			panelComponent.getChildren().add(pointsLine.build());
 		}
 
 		if (!plugin.isBankPearlsKnown())
 		{
-			panelComponent.getChildren().add(LineComponent.builder()
-				.left("Open your bank to count banked pearls")
-				.leftColor(Color.GRAY)
-				.leftFont(FontManager.getRunescapeSmallFont())
-				.build());
+			addSmallLine("Bank pearls:", "open bank", Color.GRAY);
 		}
 	}
 
-	private String centerLabel(double progress, int remaining)
+	static OutlinedProgressBarComponent newBar(Color color, double progress)
+	{
+		var progressBar = new OutlinedProgressBarComponent();
+		progressBar.setForegroundColor(color);
+		progressBar.setBackgroundColor(PROGRESS_BAR_BACKGROUND_COLOR);
+		progressBar.setPercentage(progress);
+		return progressBar;
+	}
+
+	/**
+	 * The text line that sits above a bar: its name on the left, current/goal on the right.
+	 */
+	static LineComponent labelLine(String left, String right)
+	{
+		return LineComponent.builder()
+			.left(left)
+			.leftFont(FontManager.getRunescapeSmallFont())
+			.right(right)
+			.rightFont(FontManager.getRunescapeSmallFont())
+			.build();
+	}
+
+	private void addSmallLine(String left, String right, Color color)
+	{
+		panelComponent.getChildren().add(LineComponent.builder()
+			.left(left)
+			.leftFont(FontManager.getRunescapeSmallFont())
+			.right(right)
+			.rightColor(color)
+			.rightFont(FontManager.getRunescapeSmallFont())
+			.build());
+	}
+
+	static String centerLabel(boolean showPercentage, double progress, int remaining)
 	{
 		String remainingText = remaining > 0 ? "(" + QuantityFormatter.quantityToStackSize(remaining) + ")" : "";
-		if (config.showPercentages())
+		if (showPercentage)
 		{
 			String percentText = DECIMAL_FORMAT.format(progress * 100) + "%";
 			return remainingText.isEmpty() ? percentText : percentText + " " + remainingText;

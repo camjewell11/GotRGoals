@@ -21,7 +21,9 @@ import net.runelite.client.util.QuantityFormatter;
  *     costs one elemental and one catalytic point, so games = the larger of each type's shortfall
  *     (after banked points and this game's energy so far) / that type's average points per game.</li>
  * </ul>
- * Values drawn from the configured assumptions rather than real games are shown in gray.
+ * Values drawn from the configured assumptions rather than real games are shown in gray. Every
+ * row is kept short (label + a number or two) so it fits the narrow default width without
+ * wrapping.
  */
 class EstimateOverlay extends OverlayPanel
 {
@@ -39,7 +41,7 @@ class EstimateOverlay extends OverlayPanel
 
 		setPosition(OverlayPosition.TOP_RIGHT);
 		setPriority(PRIORITY_LOW);
-		panelComponent.setPreferredSize(new Dimension(250, 0));
+		panelComponent.setPreferredSize(new Dimension(GoalOverlay.PREFERRED_WIDTH, 0));
 		panelComponent.setBorder(new Rectangle(3, 3, 3, 3));
 		panelComponent.setGap(new Point(0, 2));
 	}
@@ -65,68 +67,65 @@ class EstimateOverlay extends OverlayPanel
 
 		graphics.setFont(FontManager.getRunescapeSmallFont());
 
-		addRow("Estimated remaining", null, null, true);
+		panelComponent.getChildren().add(LineComponent.builder()
+			.left("Games remaining")
+			.leftFont(FontManager.getRunescapeBoldFont())
+			.build());
 
 		if (goal.isLevelGoalEnabled())
 		{
 			addLevelRow(goal);
 		}
-		if (showRewards)
-		{
-			addRewardRows(goal);
-		}
+		Integer searchesNeeded = showRewards ? addRewardRow(goal) : null;
 
-		addBasisRow();
+		addBasisRows(searchesNeeded);
 
 		return super.render(graphics);
 	}
 
 	private void addLevelRow(Goal goal)
 	{
-		String label = (goal.isTargetXpOverride()
-			? QuantityFormatter.quantityToStackSize(goal.getTargetXp()) + " xp"
-			: "Level " + goal.getTargetLevel()) + ":";
+		String label = goal.isTargetXpOverride()
+			? QuantityFormatter.quantityToStackSize(goal.getTargetXp()) + " xp:"
+			: "Level " + goal.getTargetLevel() + ":";
 
 		int xpRemaining = goal.getXpRemaining();
 		if (xpRemaining <= 0)
 		{
-			addRow(label, "Done", Color.GREEN, false);
+			addRow(label, "Done", Color.GREEN);
 			return;
 		}
 
 		Integer games = Goal.gamesForXp(xpRemaining, plugin.getXpPerGame());
 		if (games == null)
 		{
-			addRow(label, "finish a game first", Color.GRAY, false);
+			addRow(label, "play a game", Color.GRAY);
 			return;
 		}
 
-		addRow(label, formatGames(games), plugin.isXpPerGameObserved() ? Color.WHITE : ASSUMED_COLOR, false);
+		addRow(label, formatGames(games), plugin.isXpPerGameObserved() ? Color.WHITE : ASSUMED_COLOR);
 	}
 
-	private void addRewardRows(Goal goal)
+	/**
+	 * @return the searches still needed (shown in the basis rows), or null if the goal is met
+	 */
+	private Integer addRewardRow(Goal goal)
 	{
 		int pearlsRemaining = goal.getPearlsRemaining();
 		if (pearlsRemaining <= 0)
 		{
-			addRow("Rewards:", "Done", Color.GREEN, false);
-			return;
+			addRow("Rewards:", "Done", Color.GREEN);
+			return null;
 		}
 
 		int searchesNeeded = Goal.searchesForPearls(pearlsRemaining, plugin.getPearlsPerSearch());
-		String searchesText = QuantityFormatter.formatNumber(searchesNeeded);
-		if (plugin.isPointsKnown())
-		{
-			searchesText += " (" + QuantityFormatter.formatNumber(plugin.getBankedSearches()) + " banked)";
-		}
-		addRow("Searches:", searchesText, Color.WHITE, false);
 
 		// Without knowing what's banked, a games estimate would count every banked point as still
 		// needing to be earned - better to say so than show a confidently wrong number.
 		if (!plugin.isPointsKnown())
 		{
-			addRow("Reward games:", "check Rewards Guardian", Color.GRAY, false);
-			return;
+			addRow("Rewards:", "Check guardian", Color.GRAY);
+			return searchesNeeded;
 		}
 
 		double haveElemental = plugin.getElementalPoints()
@@ -138,54 +137,53 @@ class EstimateOverlay extends OverlayPanel
 			plugin.getElementalPerGame(), plugin.getCatalyticPerGame());
 		if (games == null)
 		{
-			addRow("Reward games:", "finish a game first", Color.GRAY, false);
-			return;
+			addRow("Rewards:", "play a game", Color.GRAY);
 		}
-		if (games == 0)
+		else if (games == 0)
 		{
-			addRow("Reward games:", "search your points", Color.GREEN, false);
-			return;
-		}
-
-		addRow("Reward games:", formatGames(games), plugin.isPointsPerGameObserved() ? Color.WHITE : ASSUMED_COLOR, false);
-	}
-
-	/**
-	 * A small footer saying what the estimates are based on, so a wild number from a single
-	 * unusual game reads as such.
-	 */
-	private void addBasisRow()
-	{
-		int games = plugin.getHistory().countInWindow(config.gamesWindow());
-		String text;
-		if (games == 0)
-		{
-			text = config.assumedXpPerGame() > 0 || config.assumedPointsPerGame() > 0
-				? "Using assumed rates until a game finishes"
-				: "Waiting for a game to finish";
+			addRow("Rewards:", "Search now", Color.GREEN);
 		}
 		else
 		{
-			text = "Avg of last " + games + (games == 1 ? " game" : " games");
-			if (plugin.getXpPerGame() != null && plugin.isXpPerGameObserved())
-			{
-				text += ": " + QuantityFormatter.quantityToStackSize(Math.round(plugin.getXpPerGame())) + " xp";
-			}
-			if (plugin.getElementalPerGame() != null && plugin.getCatalyticPerGame() != null)
-			{
-				text += ", " + String.format("%.1f/%.1f pts", plugin.getElementalPerGame(), plugin.getCatalyticPerGame());
-			}
+			addRow("Rewards:", formatGames(games), plugin.isPointsPerGameObserved() ? Color.WHITE : ASSUMED_COLOR);
 		}
-		panelComponent.getChildren().add(LineComponent.builder()
-			.left(text)
-			.leftColor(Color.GRAY)
-			.leftFont(FontManager.getRunescapeSmallFont())
-			.build());
+		return searchesNeeded;
+	}
+
+	/**
+	 * Small gray rows saying what the estimates are based on, so a wild number from a single
+	 * unusual game reads as such.
+	 */
+	private void addBasisRows(Integer searchesNeeded)
+	{
+		if (searchesNeeded != null)
+		{
+			addSmallRow("Searches needed:", QuantityFormatter.formatNumber(searchesNeeded));
+		}
+
+		int games = plugin.getHistory().countInWindow(config.gamesWindow());
+		if (games == 0)
+		{
+			boolean assumed = config.assumedXpPerGame() > 0 || config.assumedPointsPerGame() > 0;
+			addSmallRow(assumed ? "Using assumed rates" : "No games recorded", null);
+			return;
+		}
+
+		addSmallRow("Averaged over:", games + (games == 1 ? " game" : " games"));
+		if (plugin.getXpPerGame() != null && plugin.isXpPerGameObserved())
+		{
+			addSmallRow("XP / game:", QuantityFormatter.quantityToStackSize(Math.round(plugin.getXpPerGame())));
+		}
+		if (plugin.getElementalPerGame() != null && plugin.getCatalyticPerGame() != null)
+		{
+			addSmallRow("Points / game:",
+				String.format("%.1f / %.1f", plugin.getElementalPerGame(), plugin.getCatalyticPerGame()));
+		}
 	}
 
 	private String formatGames(int games)
 	{
-		String text = QuantityFormatter.formatNumber(games) + (games == 1 ? " game" : " games");
+		String text = QuantityFormatter.formatNumber(games);
 		if (config.showTimeEstimates() && plugin.getMinutesPerGame() != null)
 		{
 			text += " (~" + formatMinutes(games * plugin.getMinutesPerGame()) + ")";
@@ -197,22 +195,31 @@ class EstimateOverlay extends OverlayPanel
 	{
 		if (minutes < 60)
 		{
-			return Math.max(1, (int) Math.ceil(minutes)) + " min";
+			return Math.max(1, (int) Math.ceil(minutes)) + "m";
 		}
-		return String.format("%.1f hr", minutes / 60.0);
+		return String.format("%.1fh", minutes / 60.0);
 	}
 
-	private void addRow(String left, String right, Color rightColor, boolean header)
+	private void addRow(String left, String right, Color rightColor)
 	{
-		var line = LineComponent.builder()
+		panelComponent.getChildren().add(LineComponent.builder()
 			.left(left)
-			.leftFont(header ? FontManager.getRunescapeBoldFont() : FontManager.getRunescapeFont());
-		if (right != null)
-		{
-			line.right(right)
-				.rightFont(FontManager.getRunescapeFont())
-				.rightColor(rightColor);
-		}
-		panelComponent.getChildren().add(line.build());
+			.leftFont(FontManager.getRunescapeFont())
+			.right(right)
+			.rightFont(FontManager.getRunescapeFont())
+			.rightColor(rightColor)
+			.build());
+	}
+
+	private void addSmallRow(String left, String right)
+	{
+		panelComponent.getChildren().add(LineComponent.builder()
+			.left(left)
+			.leftColor(Color.GRAY)
+			.leftFont(FontManager.getRunescapeSmallFont())
+			.right(right)
+			.rightColor(Color.GRAY)
+			.rightFont(FontManager.getRunescapeSmallFont())
+			.build());
 	}
 }

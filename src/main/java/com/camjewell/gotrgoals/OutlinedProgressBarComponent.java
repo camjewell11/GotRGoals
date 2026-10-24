@@ -107,19 +107,30 @@ class OutlinedProgressBarComponent implements LayoutableRenderableEntity
 		FontMetrics fm = graphics.getFontMetrics();
 		int textY = y + (height + fm.getAscent()) / 2 - 1;
 
-		if (!leftLabel.isEmpty())
-		{
-			drawOutlined(graphics, leftLabel, x + TEXT_PADDING, textY);
-		}
+		// The center label wins; a side label is only drawn if it fits beside it without
+		// touching, so shrinking the overlay drops labels instead of overprinting them.
+		int centerWidth = centerLabel.isEmpty() ? 0 : fm.stringWidth(centerLabel);
+		int centerStart = x + (width - centerWidth) / 2;
+		int centerEnd = centerStart + centerWidth;
 		if (!centerLabel.isEmpty())
 		{
-			int w = fm.stringWidth(centerLabel);
-			drawOutlined(graphics, centerLabel, x + (width - w) / 2, textY);
+			drawOutlined(graphics, centerLabel, centerStart, textY);
+		}
+		if (!leftLabel.isEmpty())
+		{
+			int leftEnd = x + TEXT_PADDING + fm.stringWidth(leftLabel);
+			if (centerLabel.isEmpty() || leftEnd + TEXT_PADDING <= centerStart)
+			{
+				drawOutlined(graphics, leftLabel, x + TEXT_PADDING, textY);
+			}
 		}
 		if (!rightLabel.isEmpty())
 		{
-			int w = fm.stringWidth(rightLabel);
-			drawOutlined(graphics, rightLabel, x + width - w - TEXT_PADDING, textY);
+			int rightStart = x + width - fm.stringWidth(rightLabel) - TEXT_PADDING;
+			if (centerLabel.isEmpty() || rightStart >= centerEnd + TEXT_PADDING)
+			{
+				drawOutlined(graphics, rightLabel, rightStart, textY);
+			}
 		}
 
 		bounds.setBounds(x, y, width, height);
