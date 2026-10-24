@@ -151,10 +151,23 @@ public interface GotrGoalsConfig extends Config
 
 	@ConfigItem(
 		section = LEVEL_GOAL,
+		keyName = "showLevelOverlay",
+		name = "Show level overlay",
+		description = "Show the XP progress bar overlay. Turn off to keep the level goal only as a row in the "
+			+ "estimates overlay.",
+		position = 1
+	)
+	default boolean showLevelOverlay()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		section = LEVEL_GOAL,
 		keyName = "targetLevel",
 		name = "Target level",
 		description = "The Runecraft level you're working toward. 0 always targets your next level.",
-		position = 1
+		position = 2
 	)
 	@Range(min = 0, max = 99)
 	default int targetLevel()
@@ -167,7 +180,7 @@ public interface GotrGoalsConfig extends Config
 		keyName = "targetXp",
 		name = "Target XP (overrides level)",
 		description = "An exact Runecraft XP target, e.g. for 200M. Leave at 0 to use Target level instead.",
-		position = 2
+		position = 3
 	)
 	@Range(min = 0, max = 200_000_000)
 	default int targetXp()

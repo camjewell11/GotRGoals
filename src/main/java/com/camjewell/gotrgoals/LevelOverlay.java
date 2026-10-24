@@ -40,7 +40,9 @@ class LevelOverlay extends OverlayPanel
 	public Dimension render(Graphics2D graphics)
 	{
 		Goal goal = plugin.getGoal();
-		if (!goal.isLevelGoalEnabled())
+		// The goal itself (and its estimates row) is controlled by trackLevelGoal; this toggle only
+		// hides the bar, for players who just want the games-remaining number.
+		if (!goal.isLevelGoalEnabled() || !config.showLevelOverlay())
 		{
 			return null;
 		}
