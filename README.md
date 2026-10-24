@@ -1,0 +1,68 @@
+# Guardians of the Rift Goals
+
+A RuneLite plugin that predicts how many more Guardians of the Rift games it'll take to reach a
+Runecraft level goal, or to afford the Temple Supplies rewards you're saving for.
+
+Sibling of [Mage Training Arena Goals](../MageTrainingArenaGoals), with the same two-overlay layout.
+
+## How it works
+
+- **Level Goal** (config): a target Runecraft level (default 99), or an exact **Target XP** for
+  anything past 99. The overlay shows a progress bar from your current XP to the target.
+- **Reward Tracking** (config): checkboxes for every non-talisman Temple Supplies item (the Raiments of
+  the Eye pieces, Ring of the elements, Abyssal needle, Abyssal lantern, Guardian's eye). Tick
+  several to track their *combined* Abyssal pearl cost.
+- **Points** (config): what the plugin reads in-game, all saved per character so it survives restarts:
+  - **Banked reward points** come from the end-of-game `Total elemental energy: … Total catalytic
+    energy: …` message, or the Rewards Guardian's **Check** option. There's no varbit for them,
+    so until you finish a game or Check, the overlay asks you to. Each `You found some loot:`
+    (one per roll, Big-search included) takes 1 of each off.
+  - **Pearls** are your inventory plus your bank as of the last time you opened it.
+  - **Use manual totals** switches to typed-in values, e.g. to preview the overlay away from the
+    minigame.
+- **Overlay**: the level bar, then the reward header (icon, name, % complete) and a pearl bar. The
+  translucent segment on the pearl bar is the pearls your banked points are *expected* to give
+  once you search them.
+- **Completion Estimates** (second overlay):
+  - **Level**: XP remaining divided by your **rolling average XP per game**. That average is
+    measured from `The rift becomes active!` to just after the game ends, so it includes both
+    crafting XP and the end-of-game bonus (RC level × 45).
+  - **Searches**: pearls remaining divided by **expected pearls per search**, from the wiki drop
+    table. Pearls come as 14–16 at 18/140 per search, or 18/125 once you own every pouch:
+    ≈1.93 or ≈2.16 per search. You can optionally add in dye/lantern trade-ins.
+  - **Reward games**: each search costs one elemental *and* one catalytic point. So for each type,
+    the plugin takes searches needed, minus banked points, minus this game's energy so far / 100,
+    and divides by your **rolling average points per game** for that type. The larger result is
+    the answer.
+  - **Games to average** (default 10) sets how many recent games the rolling averages cover.
+  - **Show time estimates** adds `(~X hr)`, from how long your recent games took. Back-to-back
+    games are timed end to end, so the lobby wait counts.
+  - **Assumed XP / points per game** are optional starting rates used until your first game is
+    recorded. They default to 0, which shows nothing until then. Values based on them are drawn
+    in gray.
+
+## Not yet verified in-game
+
+These come from other GotR plugins and the wiki. They haven't been confirmed live yet:
+
+- The game-end messages (`The Great Guardian successfully closed the rift`, `The rift has been
+  subdued`) and the `Elemental energy attuned: …` message. A game is recorded when any of these
+  appears.
+- The Check dialog being `InterfaceID.Messagebox.TEXT`.
+- A **failed** game (Great Guardian defeated) is probably not recorded, because its message text
+  isn't known yet.
+- Searching with 25 pearls instead of points also sends `You found some loot:`, so the banked
+  points drift by 1. The next game's total, or a Check, corrects them.
+
+## Running the dev client
+
+```
+./gradlew run
+```
+
+Follow the [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts)
+instructions to log in to the development client.
+
+## License
+
+BSD 2-Clause, see [LICENSE](LICENSE).
