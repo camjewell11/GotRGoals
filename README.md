@@ -40,6 +40,8 @@ the pearl overlay, and turn on **Show estimates overlay** for the games-remainin
     and divides by your **rolling average points per game** for that type. The larger result is
     the answer.
   - **Games to average** (default 10) sets how many recent games the rolling averages cover.
+  - **Reset averages** forgets every recorded game so the averages start fresh. The config panel
+    can't hold buttons, so it's a checkbox that unticks itself. Banked points and pearls are kept.
   - **Show time estimates** adds `(~X hr)`, from how long your recent games took. Back-to-back
     games are timed end to end, so the lobby wait counts.
   - **Assumed XP / points per game** are optional starting rates used until your first game is

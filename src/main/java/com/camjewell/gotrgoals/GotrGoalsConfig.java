@@ -389,4 +389,23 @@ public interface GotrGoalsConfig extends Config
 	{
 		return 0;
 	}
+
+	String RESET_AVERAGES_KEY = "resetAverages";
+
+	/**
+	 * Config panels can't hold buttons, so this acts as one: ticking it clears the recorded games
+	 * and the plugin immediately unticks it again.
+	 */
+	@ConfigItem(
+		section = ESTIMATES,
+		keyName = RESET_AVERAGES_KEY,
+		name = "Reset averages",
+		description = "Tick to forget every recorded game and start the XP and points-per-game averages from "
+			+ "scratch, e.g. after changing how you play. Unticks itself.",
+		position = 7
+	)
+	default boolean resetAverages()
+	{
+		return false;
+	}
 }

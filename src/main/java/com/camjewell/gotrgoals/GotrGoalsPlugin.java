@@ -294,7 +294,16 @@ public class GotrGoalsPlugin extends Plugin
 		{
 			return;
 		}
-		refresh();
+		if (GotrGoalsConfig.RESET_AVERAGES_KEY.equals(event.getKey()))
+		{
+			if (config.resetAverages())
+			{
+				configManager.setConfiguration(GotrGoalsConfig.CONFIG_GROUP, GotrGoalsConfig.RESET_AVERAGES_KEY, false);
+				clientThread.invokeLater(this::resetAverages);
+			}
+			return;
+		}
+		clientThread.invokeLater(this::refresh);
 	}
 
 	Goal getGoal()
@@ -500,6 +509,20 @@ public class GotrGoalsPlugin extends Plugin
 		pendingEndTick = -1;
 		gameStartTick = -1;
 		gameStartXp = -1;
+	}
+
+	/**
+	 * Forgets every recorded game, so the per-game averages start over from the next game. Banked
+	 * points and pearls are left alone; they're facts, not averages. A game in progress is kept
+	 * and becomes the first sample of the new baseline.
+	 */
+	private void resetAverages()
+	{
+		history.clear();
+		configManager.unsetRSProfileConfiguration(GotrGoalsConfig.CONFIG_GROUP, KEY_HISTORY);
+		lastGameEndTick = -1;
+		log.debug("Reset GotR game averages");
+		refresh();
 	}
 
 	private void resetGameTracking()
