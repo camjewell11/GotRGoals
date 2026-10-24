@@ -146,7 +146,7 @@ public interface GotrGoalsConfig extends Config
 	)
 	default boolean trackLevelGoal()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
@@ -294,7 +294,7 @@ public interface GotrGoalsConfig extends Config
 	)
 	default boolean showEstimatesOverlay()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
