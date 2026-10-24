@@ -2,6 +2,7 @@ package com.camjewell.gotrgoals;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import net.runelite.api.Experience;
 import org.junit.Test;
 
 public class GoalMathTest
@@ -59,6 +60,35 @@ public class GoalMathTest
 		assertEquals(Integer.valueOf(5), Goal.gamesForXp(100_001, 25_000.0));
 		assertEquals(Integer.valueOf(0), Goal.gamesForXp(0, null));
 		assertNull(Goal.gamesForXp(1_000, null));
+	}
+
+	@Test
+	public void targetLevelZeroMeansNextLevel()
+	{
+		Goal goal = new Goal();
+		goal.recalculate(targetLevelConfig(0), 0, Experience.getXpForLevel(74) + 1);
+		assertEquals(75, goal.getTargetLevel());
+		assertEquals(Experience.getXpForLevel(75), goal.getTargetXp());
+
+		// Already 99: the goal is just met rather than pointing past the cap.
+		goal.recalculate(targetLevelConfig(0), 0, Experience.getXpForLevel(99));
+		assertEquals(99, goal.getTargetLevel());
+		assertEquals(0, goal.getXpRemaining());
+
+		goal.recalculate(targetLevelConfig(85), 0, Experience.getXpForLevel(74));
+		assertEquals(85, goal.getTargetLevel());
+	}
+
+	private static GotrGoalsConfig targetLevelConfig(int targetLevel)
+	{
+		return new GotrGoalsConfig()
+		{
+			@Override
+			public int targetLevel()
+			{
+				return targetLevel;
+			}
+		};
 	}
 
 	@Test

@@ -208,7 +208,9 @@ class Goal
 		}
 		else
 		{
-			this.targetLevel = Math.max(2, Math.min(config.targetLevel(), Experience.MAX_REAL_LEVEL));
+			// 0 means "next level", so the default is useful at any level without configuring.
+			int level = config.targetLevel() > 0 ? config.targetLevel() : currentLevel + 1;
+			this.targetLevel = Math.max(2, Math.min(level, Experience.MAX_REAL_LEVEL));
 			this.targetXp = Experience.getXpForLevel(this.targetLevel);
 		}
 	}

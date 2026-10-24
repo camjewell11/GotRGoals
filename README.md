@@ -10,8 +10,8 @@ Sibling of [Mage Training Arena Goals](../MageTrainingArenaGoals), with the same
 Everything is off by default. Turn on **Track level goal** for the level overlay, tick a reward for
 the pearl overlay, and turn on **Show estimates overlay** for the games-remaining overlay.
 
-- **Level Goal** (config): a target Runecraft level (default 99), or an exact **Target XP** for
-  anything past 99. The overlay shows a progress bar from your current XP to the target.
+- **Level Goal** (config): a target Runecraft level (default 0, meaning *your next level*), or an
+  exact **Target XP** for anything past 99. The overlay shows a progress bar from your current XP to the target.
 - **Reward Tracking** (config): checkboxes for every non-talisman Temple Supplies item (the Raiments of
   the Eye pieces, Ring of the elements, Abyssal needle, Abyssal lantern, Guardian's eye). Tick
   several to track their *combined* Abyssal pearl cost.

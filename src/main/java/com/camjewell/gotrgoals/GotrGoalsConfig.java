@@ -153,13 +153,13 @@ public interface GotrGoalsConfig extends Config
 		section = LEVEL_GOAL,
 		keyName = "targetLevel",
 		name = "Target level",
-		description = "The Runecraft level you're working toward",
+		description = "The Runecraft level you're working toward. 0 always targets your next level.",
 		position = 1
 	)
-	@Range(min = 2, max = 99)
+	@Range(min = 0, max = 99)
 	default int targetLevel()
 	{
-		return 99;
+		return 0;
 	}
 
 	@ConfigItem(
