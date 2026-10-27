@@ -39,6 +39,8 @@ the pearl overlay, and turn on **Show estimates overlay** for the games-remainin
     the plugin takes searches needed, minus banked points, minus this game's energy so far / 100,
     and divides by your **rolling average points per game** for that type. The larger result is
     the answer.
+  - **Hover** the estimates overlay to see what the numbers are based on: searches needed, pearls
+    per search, and how many games are averaged, with their XP, points and time per game.
   - **Games to average** (default 10) sets how many recent games the rolling averages cover.
   - Only **full games** count: you must be inside the barrier when the rift opens. Games joined
     part-way are left out entirely. That covers walking in late, turning the plugin on or logging

@@ -5,11 +5,16 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.util.ArrayList;
+import java.util.List;
 import javax.inject.Inject;
+import net.runelite.api.Client;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
+import net.runelite.client.ui.overlay.tooltip.Tooltip;
+import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import net.runelite.client.util.QuantityFormatter;
 
 /**
@@ -23,7 +28,8 @@ import net.runelite.client.util.QuantityFormatter;
  * </ul>
  * Values drawn from the configured assumptions rather than real games are shown in gray. Every
  * row is kept short (label + a number or two) so it fits the narrow default width without
- * wrapping.
+ * wrapping; the supporting detail (searches needed, how many games the averages cover, the
+ * averages themselves) is in a hover tooltip instead, so the overlay is just the answers.
  */
 class EstimateOverlay extends OverlayPanel
 {
@@ -31,13 +37,17 @@ class EstimateOverlay extends OverlayPanel
 
 	private final GotrGoalsPlugin plugin;
 	private final GotrGoalsConfig config;
+	private final Client client;
+	private final TooltipManager tooltipManager;
 
 	@Inject
-	EstimateOverlay(GotrGoalsPlugin plugin, GotrGoalsConfig config)
+	EstimateOverlay(GotrGoalsPlugin plugin, GotrGoalsConfig config, Client client, TooltipManager tooltipManager)
 	{
 		super(plugin);
 		this.plugin = plugin;
 		this.config = config;
+		this.client = client;
+		this.tooltipManager = tooltipManager;
 
 		setPosition(OverlayPosition.TOP_RIGHT);
 		setPriority(PRIORITY_LOW);
@@ -78,9 +88,16 @@ class EstimateOverlay extends OverlayPanel
 		}
 		Integer searchesNeeded = showRewards ? addRewardRow(goal) : null;
 
-		addBasisRows(searchesNeeded);
+		Dimension dimension = super.render(graphics);
 
-		return super.render(graphics);
+		// getBounds() is where the overlay was last drawn, which is where the mouse is pointing.
+		net.runelite.api.Point mouse = client.getMouseCanvasPosition();
+		if (mouse != null && getBounds().contains(mouse.getX(), mouse.getY()))
+		{
+			tooltipManager.add(new Tooltip(basisTooltip(searchesNeeded)));
+		}
+
+		return dimension;
 	}
 
 	private void addLevelRow(Goal goal)
@@ -151,34 +168,41 @@ class EstimateOverlay extends OverlayPanel
 	}
 
 	/**
-	 * Small gray rows saying what the estimates are based on, so a wild number from a single
-	 * unusual game reads as such.
+	 * Hover text saying what the estimates are based on, so a wild number from a single unusual
+	 * game reads as such.
 	 */
-	private void addBasisRows(Integer searchesNeeded)
+	private String basisTooltip(Integer searchesNeeded)
 	{
+		List<String> lines = new ArrayList<>();
 		if (searchesNeeded != null)
 		{
-			addSmallRow("Searches needed:", QuantityFormatter.formatNumber(searchesNeeded));
+			lines.add("Searches needed: " + QuantityFormatter.formatNumber(searchesNeeded));
+			lines.add(String.format("Pearls / search: %.2f", plugin.getPearlsPerSearch()));
 		}
 
 		int games = plugin.getHistory().countInWindow(config.gamesWindow());
 		if (games == 0)
 		{
 			boolean assumed = config.assumedXpPerGame() > 0 || config.assumedPointsPerGame() > 0;
-			addSmallRow(assumed ? "Using assumed rates" : "No games recorded", null);
-			return;
+			lines.add(assumed ? "Using assumed rates (gray) until a game is recorded" : "No games recorded yet");
+			return String.join("</br>", lines);
 		}
 
-		addSmallRow("Averaged over:", games + (games == 1 ? " game" : " games"));
+		lines.add("Averaged over: " + games + (games == 1 ? " game" : " games"));
 		if (plugin.getXpPerGame() != null && plugin.isXpPerGameObserved())
 		{
-			addSmallRow("XP / game:", QuantityFormatter.quantityToStackSize(Math.round(plugin.getXpPerGame())));
+			lines.add("XP / game: " + QuantityFormatter.quantityToStackSize(Math.round(plugin.getXpPerGame())));
 		}
 		if (plugin.getElementalPerGame() != null && plugin.getCatalyticPerGame() != null)
 		{
-			addSmallRow("Points / game:",
-				String.format("%.1f / %.1f", plugin.getElementalPerGame(), plugin.getCatalyticPerGame()));
+			lines.add(String.format("Points / game: %.1f elemental, %.1f catalytic",
+				plugin.getElementalPerGame(), plugin.getCatalyticPerGame()));
 		}
+		if (plugin.getMinutesPerGame() != null)
+		{
+			lines.add(String.format("Time / game: %.1f min", plugin.getMinutesPerGame()));
+		}
+		return String.join("</br>", lines);
 	}
 
 	private String formatGames(int games)
@@ -208,18 +232,6 @@ class EstimateOverlay extends OverlayPanel
 			.right(right)
 			.rightFont(FontManager.getRunescapeFont())
 			.rightColor(rightColor)
-			.build());
-	}
-
-	private void addSmallRow(String left, String right)
-	{
-		panelComponent.getChildren().add(LineComponent.builder()
-			.left(left)
-			.leftColor(Color.GRAY)
-			.leftFont(FontManager.getRunescapeSmallFont())
-			.right(right)
-			.rightColor(Color.GRAY)
-			.rightFont(FontManager.getRunescapeSmallFont())
 			.build());
 	}
 }
