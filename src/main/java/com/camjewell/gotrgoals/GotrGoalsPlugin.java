@@ -67,6 +67,14 @@ public class GotrGoalsPlugin extends Plugin
 	 */
 	private static final int MAX_BACK_TO_BACK_TICKS = 20 * TICKS_PER_MINUTE;
 
+	/**
+	 * Leaving both the temple and the game area for longer than this abandons the game in
+	 * progress, so a game left part-way (then rejoined later, or followed by a different game
+	 * joined late) is never recorded as one the player played in full. A minute is far longer
+	 * than an altar trip or a loading screen.
+	 */
+	private static final int MAX_AWAY_TICKS = TICKS_PER_MINUTE;
+
 	private static final String GAME_START_MESSAGE = "The rift becomes active!";
 	private static final String[] GAME_END_MESSAGES = {
 		"The Great Guardian successfully closed the rift",
@@ -135,6 +143,7 @@ public class GotrGoalsPlugin extends Plugin
 	private int tickCounter = 0;
 	private boolean gameActive = false;
 	private int gameStartTick = -1;
+	private int ticksAwayFromGame = 0;
 	private int gameStartXp = -1;
 	private int lastGameEndTick = -1;
 	private int finalizeAtTick = -1;
@@ -210,10 +219,12 @@ public class GotrGoalsPlugin extends Plugin
 		{
 			finalizeGame();
 		}
-		if (isAtGotr())
+		boolean atGotr = isAtGotr();
+		if (atGotr)
 		{
 			readCheckDialog();
 		}
+		trackTimeAway(atGotr);
 		refresh();
 	}
 
@@ -238,9 +249,21 @@ public class GotrGoalsPlugin extends Plugin
 
 		if (message.contains(GAME_START_MESSAGE))
 		{
-			gameActive = true;
-			gameStartTick = tickCounter;
-			gameStartXp = client.getSkillExperience(Skill.RUNECRAFT);
+			// Only a game the player is inside the barrier for when the rift opens counts. Seeing
+			// the message from elsewhere in the temple and walking in later is joining part-way,
+			// so that also clears any older start rather than leaving it to pair with this end.
+			if (isInGame())
+			{
+				gameActive = true;
+				gameStartTick = tickCounter;
+				gameStartXp = client.getSkillExperience(Skill.RUNECRAFT);
+				ticksAwayFromGame = 0;
+			}
+			else
+			{
+				log.debug("GotR game started while outside the barrier; it won't count toward averages");
+				abandonGame();
+			}
 			return;
 		}
 
@@ -419,6 +442,16 @@ public class GotrGoalsPlugin extends Plugin
 		{
 			return true;
 		}
+		return isInGame();
+	}
+
+	/**
+	 * @return true if the GotR HUD (guardian power, portals, energy) is up - shown only inside the
+	 * barrier, including while waiting for the rift to open and inside runic altars mid-game, not
+	 * in the outer temple by the Rewards Guardian
+	 */
+	private boolean isInGame()
+	{
 		Widget hud = client.getWidget(InterfaceID.GotrHud.CONTENT);
 		return hud != null && !hud.isHidden();
 	}
@@ -481,34 +514,74 @@ public class GotrGoalsPlugin extends Plugin
 		gameActive = false;
 	}
 
+	/**
+	 * Records the finished game - but only if the player was in it from the start. A game joined
+	 * part-way (late entry, plugin turned on mid-game, logged in mid-game, or abandoned and come
+	 * back to) would drag the XP and points averages down for reasons unrelated to how the player
+	 * normally plays, so it's left out entirely rather than recorded with partial numbers.
+	 */
 	private void finalizeGame()
 	{
-		int xp = GameHistory.UNKNOWN;
-		if (gameStartXp >= 0)
+		boolean fullGame = gameStartTick >= 0 && gameStartXp >= 0;
+		if (fullGame)
 		{
-			int gained = client.getSkillExperience(Skill.RUNECRAFT) - gameStartXp;
-			xp = gained >= 0 ? gained : GameHistory.UNKNOWN;
+			int xp = Math.max(client.getSkillExperience(Skill.RUNECRAFT) - gameStartXp, 0);
+
+			int ticks;
+			if (lastGameEndTick >= 0 && pendingEndTick - lastGameEndTick <= MAX_BACK_TO_BACK_TICKS)
+			{
+				ticks = pendingEndTick - lastGameEndTick;
+			}
+			else
+			{
+				ticks = pendingEndTick - gameStartTick;
+			}
+
+			history.add(new GameHistory.Sample(xp, pendingElemental, pendingCatalytic, ticks));
+			configManager.setRSProfileConfiguration(GotrGoalsConfig.CONFIG_GROUP, KEY_HISTORY, history.serialize());
+			log.debug("Recorded GotR game: xp={} elemental={} catalytic={} ticks={}", xp, pendingElemental, pendingCatalytic, ticks);
+		}
+		else
+		{
+			log.debug("Skipped GotR game joined part-way: elemental={} catalytic={}", pendingElemental, pendingCatalytic);
 		}
 
-		int ticks = GameHistory.UNKNOWN;
-		if (lastGameEndTick >= 0 && pendingEndTick - lastGameEndTick <= MAX_BACK_TO_BACK_TICKS)
-		{
-			ticks = pendingEndTick - lastGameEndTick;
-		}
-		else if (gameStartTick >= 0)
-		{
-			ticks = pendingEndTick - gameStartTick;
-		}
-
-		history.add(new GameHistory.Sample(xp, pendingElemental, pendingCatalytic, ticks));
-		configManager.setRSProfileConfiguration(GotrGoalsConfig.CONFIG_GROUP, KEY_HISTORY, history.serialize());
-		log.debug("Recorded GotR game: xp={} elemental={} catalytic={} ticks={}", xp, pendingElemental, pendingCatalytic, ticks);
-
+		// Kept even for a skipped game: the next full game, if played straight after, is still
+		// timed from this end so the lobby wait counts toward time per game.
 		lastGameEndTick = pendingEndTick;
 		finalizeAtTick = -1;
 		pendingEndTick = -1;
 		gameStartTick = -1;
 		gameStartXp = -1;
+	}
+
+	/**
+	 * Counts consecutive ticks spent away from both the temple and the game area while a game is
+	 * being tracked, and abandons it past {@link #MAX_AWAY_TICKS}.
+	 */
+	private void trackTimeAway(boolean atGotr)
+	{
+		if (gameStartTick < 0 || atGotr)
+		{
+			ticksAwayFromGame = 0;
+			return;
+		}
+		if (++ticksAwayFromGame > MAX_AWAY_TICKS)
+		{
+			log.debug("Left the GotR game part-way; it won't count toward averages");
+			abandonGame();
+		}
+	}
+
+	/**
+	 * Forgets the game in progress so its end (if seen) is treated as a part-way game.
+	 */
+	private void abandonGame()
+	{
+		gameActive = false;
+		gameStartTick = -1;
+		gameStartXp = -1;
+		ticksAwayFromGame = 0;
 	}
 
 	/**
@@ -527,9 +600,7 @@ public class GotrGoalsPlugin extends Plugin
 
 	private void resetGameTracking()
 	{
-		gameActive = false;
-		gameStartTick = -1;
-		gameStartXp = -1;
+		abandonGame();
 		lastGameEndTick = -1;
 		finalizeAtTick = -1;
 		pendingEndTick = -1;

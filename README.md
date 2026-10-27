@@ -40,6 +40,9 @@ the pearl overlay, and turn on **Show estimates overlay** for the games-remainin
     and divides by your **rolling average points per game** for that type. The larger result is
     the answer.
   - **Games to average** (default 10) sets how many recent games the rolling averages cover.
+  - Only **full games** count: you must be inside the barrier when the rift opens. Games joined
+    part-way are left out entirely. That covers walking in late, turning the plugin on or logging
+    in mid-game, and being away from the temple for over a minute.
   - **Reset averages** forgets every recorded game so the averages start fresh. The config panel
     can't hold buttons, so it's a checkbox that unticks itself. Banked points and pearls are kept.
   - **Show time estimates** adds `(~X hr)`, from how long your recent games took. Back-to-back
@@ -50,11 +53,14 @@ the pearl overlay, and turn on **Show estimates overlay** for the games-remainin
 
 ## Not yet verified in-game
 
-These come from other GotR plugins and the wiki. They haven't been confirmed live yet:
+Confirmed live: the `The rift becomes active!` start message, the `The Great Guardian
+successfully closed the rift!` end message, and the `Elemental energy attuned: …` and `Total
+elemental energy: …` messages. All of these were seen across about 30 games. So was the GotR HUD
+(`InterfaceID.GotrHud`) showing only inside the barrier, which is how "in the game from the
+start" is decided: games reached as the rift closed were skipped, full games were recorded.
 
-- The game-end messages (`The Great Guardian successfully closed the rift`, `The rift has been
-  subdued`) and the `Elemental energy attuned: …` message. A game is recorded when any of these
-  appears.
+These come from other GotR plugins and the wiki, and haven't been confirmed yet:
+
 - The Check dialog being `InterfaceID.Messagebox.TEXT`.
 - A **failed** game (Great Guardian defeated) is probably not recorded, because its message text
   isn't known yet.

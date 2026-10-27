@@ -124,6 +124,10 @@ class GameHistory
 	/**
 	 * Replaces the current history with the parsed one. Malformed entries are skipped rather than
 	 * failing the whole load, so one bad entry never wipes out every other game.
+	 *
+	 * Entries with unknown XP are dropped too: early versions recorded games joined part-way (with
+	 * unknown XP and usually 0 points), which dragged the points average down. Games are only
+	 * recorded when their start was seen now, so this cleans those out of saved history.
 	 */
 	void deserialize(String value)
 	{
@@ -155,7 +159,10 @@ class GameHistory
 		}
 		for (Sample s : parsed)
 		{
-			add(s);
+			if (s.xp() != UNKNOWN)
+			{
+				add(s);
+			}
 		}
 	}
 
@@ -173,7 +180,8 @@ class GameHistory
 
 		/**
 		 * @param xp        Runecraft XP gained over the game (crafting + the end-of-game bonus), or
-		 *                  {@link #UNKNOWN} if the game's start wasn't seen
+		 *                  {@link #UNKNOWN} - only in history saved by early versions, which still
+		 *                  recorded games joined part-way; those aren't recorded at all now
 		 * @param elemental elemental reward points awarded at the end of the game
 		 * @param catalytic catalytic reward points awarded at the end of the game
 		 * @param ticks     game ticks the game took, or {@link #UNKNOWN}

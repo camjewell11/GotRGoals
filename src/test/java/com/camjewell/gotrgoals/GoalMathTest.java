@@ -112,12 +112,24 @@ public class GoalMathTest
 	{
 		GameHistory history = new GameHistory();
 		history.add(new GameHistory.Sample(20_000, 4, 6, 600));
-		history.add(new GameHistory.Sample(GameHistory.UNKNOWN, 6, 4, GameHistory.UNKNOWN));
+		history.add(new GameHistory.Sample(18_000, 6, 4, GameHistory.UNKNOWN));
 
 		GameHistory loaded = new GameHistory();
 		loaded.deserialize(history.serialize() + ";garbage;1,2,x,4");
 		assertEquals(2, loaded.size());
 		assertEquals(history.serialize(), loaded.serialize());
+	}
+
+	@Test
+	public void historyDropsPartWayGamesSavedByEarlyVersions()
+	{
+		// Real entries from a session on the first version: the "-1,0,0,-1" games were joined as
+		// they were ending and recorded with unknown XP and no points.
+		GameHistory loaded = new GameHistory();
+		loaded.deserialize("9131,5,4,850;-1,0,0,-1;9128,5,3,977");
+		assertEquals(2, loaded.size());
+		assertEquals(5.0, loaded.averageElemental(10), EPSILON);
+		assertEquals(3.5, loaded.averageCatalytic(10), EPSILON);
 	}
 
 	@Test
